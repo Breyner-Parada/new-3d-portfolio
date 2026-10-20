@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Color, MathUtils, type Material, type Mesh, type MeshStandardMaterial, type Object3D } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
@@ -8,8 +8,10 @@ import { useIslandNavigation } from "@/features/navigation/useIslandNavigation";
 import { findInteractive, interactiveHandlers } from "./InteractiveObject";
 import { HoverLabel } from "./HoverLabel";
 import { themeBlend } from "./themeBlend";
+import { createWaterfallMaterial, WATERFALL_PREFIX } from "./waterfallMaterial";
 
-export const ISLAND_MODEL = "/models/island.glb";
+/** The new floating island, rebuilt asset by asset in island-assets/new-island.blend. */
+export const ISLAND_MODEL = "/models/island-new.glb";
 export const DRACO_PATH = "/draco/";
 
 type Animated = { object: Object3D; kind: string; baseY: number; speed: number; phase: number };
@@ -29,6 +31,7 @@ const NEON_BOOST = 1.6; // emissive multiplier added at full night (x2.6)
 export function IslandScene() {
   const { scene } = useGLTF(ISLAND_MODEL, DRACO_PATH);
   const { hovered } = useIslandNavigation();
+  const water = useMemo(() => createWaterfallMaterial(), []);
 
   // Scene-graph objects are mutated every frame, so they live in a ref rather than render state.
   const targets = useRef<{ animated: Animated[]; glowing: Glowing[]; hoverables: Hoverable[] }>({
@@ -36,6 +39,13 @@ export function IslandScene() {
     glowing: [],
     hoverables: [],
   });
+
+  useEffect(() => {
+    scene.traverse((o) => {
+      if (o.name.startsWith(WATERFALL_PREFIX) && (o as Mesh).isMesh) (o as Mesh).material = water;
+    });
+    return () => water.dispose();
+  }, [scene, water]);
 
   useEffect(() => {
     // Interactive roots get their own material clones first (before the glow list grabs materials).
@@ -94,6 +104,8 @@ export function IslandScene() {
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
     const { animated, glowing, hoverables } = targets.current;
+    water.uniforms.uTime.value = t;
+    water.uniforms.uNight.value = themeBlend.night;
 
     // Hover highlight: ease a 0..1 mix towards the target, then apply glow + scale.
     for (const h of hoverables) {
