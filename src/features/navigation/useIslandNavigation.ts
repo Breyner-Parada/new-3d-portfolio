@@ -42,8 +42,7 @@ export const islandNavigation = {
   },
   setHovered(hovered: string | null) {
     if (hovered !== state.hovered) setState({ hovered });
-  },
-  setTransitioning(transitioning: boolean) {
+  },  setTransitioning(transitioning: boolean) {
     setState({ transitioning });
   },
 };
