@@ -5,7 +5,8 @@ import { Vector3 } from "three";
 import { useGLTF } from "@react-three/drei";
 import type { CameraView, Vec3, ZoneId } from "@/types/portfolio";
 
-export const NAV_MODEL = "/models/island-nav.glb";
+/** Camera views of the new island (NAV collection of island-assets/new-island.blend). */
+export const NAV_MODEL = "/models/island-nav-new.glb";
 
 export type ViewId = ZoneId | "overview";
 
