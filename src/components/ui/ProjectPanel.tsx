@@ -14,8 +14,8 @@ import { islandNavigation, useIslandNavigation } from "@/features/navigation/use
 import type { Project, Selection } from "@/types/portfolio";
 import { ContactForm } from "./ContactForm";
 
-const chip = "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-slate-200";
-const heading = "mb-2 mt-5 text-xs uppercase tracking-widest text-slate-400";
+const chip = "rounded-full border border-ui-border bg-ui-tag px-2.5 py-0.5 text-xs text-ui-muted";
+const heading = "mb-2 mt-5 text-xs uppercase tracking-widest text-ui-subtle";
 
 function Tags({ items }: { items: string[] }) {
   return (
@@ -38,8 +38,8 @@ function ExternalLink({ href, children }: { href: string; children: ReactNode })
 function BaseCamp({ selection }: { selection: Selection }) {
   return (
     <>
-      <p className="text-sm font-medium text-amber-300">{PROFILE.headline}</p>
-      <p className="mt-2 text-sm leading-relaxed text-slate-300">{PROFILE.about}</p>
+      <p className="text-sm font-medium text-ui-accent">{PROFILE.headline}</p>
+      <p className="mt-2 text-sm leading-relaxed text-ui-muted">{PROFILE.about}</p>
       <div className="mt-3"><Tags items={PROFILE.roles} /></div>
       <div className="mt-4">
         <a
@@ -53,12 +53,12 @@ function BaseCamp({ selection }: { selection: Selection }) {
         </a>
       </div>
       <h3 className={heading}>Experience</h3>
-      <ol className="space-y-4 border-l border-white/10 pl-4">
+      <ol className="space-y-4 border-l border-ui-border pl-4">
         {EXPERIENCE.map((x) => (
           <li key={`${x.company}-${x.period}`}>
-            <p className="text-sm font-semibold">{x.role} · <span className="text-amber-300">{x.company}</span></p>
-            <p className="text-xs text-slate-400">{x.period}</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-slate-300">
+            <p className="text-sm font-semibold">{x.role} · <span className="text-ui-accent">{x.company}</span></p>
+            <p className="text-xs text-ui-subtle">{x.period}</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-ui-muted">
               {x.points.map((p) => <li key={p}>{p}</li>)}
             </ul>
           </li>
@@ -74,12 +74,12 @@ function ProjectDetail({ project }: { project: Project }) {
       <h3 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
         {project.name}
         {project.status && (
-          <span className="rounded-full border border-teal-400/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-teal-300">
+          <span className="rounded-full border border-ui-badge px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ui-badge">
             {project.status}
           </span>
         )}
       </h3>
-      <p className="mt-1 text-sm leading-relaxed text-slate-300">{project.summary}</p>
+      <p className="mt-1 text-sm leading-relaxed text-ui-muted">{project.summary}</p>
       <div className="mt-3"><Tags items={project.stack} /></div>
       <div className="mt-4 flex flex-wrap gap-2">
         {project.live && <ExternalLink href={project.live}>{project.live.includes("play.google") ? "View on Google Play" : "Live demo"}</ExternalLink>}
@@ -116,10 +116,10 @@ function ProjectOutpost({ selection }: { selection: Selection }) {
         {others.map((p) => (
           <li key={p.slug}>
             <p className="text-sm font-medium">{p.name}</p>
-            <p className="text-xs text-slate-400">{p.summary}</p>
+            <p className="text-xs text-ui-subtle">{p.summary}</p>
             <p className="mt-1 flex gap-3 text-xs">
-              {p.live && <a className="text-amber-300 hover:underline" href={p.live} target="_blank" rel="noopener noreferrer">Demo</a>}
-              {p.source && <a className="text-amber-300 hover:underline" href={p.source} target="_blank" rel="noopener noreferrer">Code</a>}
+              {p.live && <a className="text-ui-accent hover:underline" href={p.live} target="_blank" rel="noopener noreferrer">Demo</a>}
+              {p.source && <a className="text-ui-accent hover:underline" href={p.source} target="_blank" rel="noopener noreferrer">Code</a>}
             </p>
           </li>
         ))}
@@ -133,7 +133,7 @@ function SkillCrystals({ selection }: { selection: Selection }) {
   return (
     <ul className="space-y-4">
       {ordered.map((c) => (
-        <li key={c.id} className={c.id === selection.category ? "rounded-xl border border-amber-400/40 p-3" : ""}>
+        <li key={c.id} className={c.id === selection.category ? "rounded-xl border border-ui-accent p-3" : ""}>
           <h3 className="mb-2 text-sm font-semibold">{c.name}</h3>
           <Tags items={c.skills} />
         </li>
@@ -148,8 +148,8 @@ function SystemsLab({ selection }: { selection: Selection }) {
   return (
     <>
       <h3 className="text-lg font-semibold">{current.title}</h3>
-      <p className="mt-1 text-sm text-slate-300">{current.description}</p>
-      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-200">
+      <p className="mt-1 text-sm text-ui-muted">{current.description}</p>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ui-muted">
         {current.items.map((i) => <li key={i}>{i}</li>)}
       </ul>
       <h3 className={heading}>More from the lab</h3>
@@ -191,7 +191,7 @@ function ContactPortal({ selection }: { selection: Selection }) {
           ) : null,
         )}
       </ul>
-      <p className="mt-2 text-xs text-slate-400">{PROFILE.email}</p>
+      <p className="mt-2 text-xs text-ui-subtle">{PROFILE.email}</p>
       <ContactForm />
     </>
   );
@@ -226,13 +226,13 @@ export function ProjectPanel() {
   return (
     <aside
       aria-labelledby="panel-title"
-      className="pointer-events-auto fixed inset-x-4 bottom-20 z-20 max-h-[55vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/85 p-5 text-slate-100 backdrop-blur md:inset-x-auto md:bottom-6 md:right-6 md:top-20 md:max-h-none md:w-[26rem]"
+      className="pointer-events-auto fixed inset-x-4 bottom-20 z-20 max-h-[55vh] overflow-y-auto rounded-2xl border border-ui-border bg-ui-bg p-5 text-ui-fg shadow-xl backdrop-blur md:inset-x-auto md:bottom-6 md:right-6 md:top-20 md:max-h-none md:w-[26rem]"
     >
       <div className="mb-3 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-amber-400">{zone.title}</p>
+          <p className="text-xs uppercase tracking-widest text-ui-accent">{zone.title}</p>
           <h2 id="panel-title" className="text-xl font-semibold">{zone.label}</h2>
-          <p className="mt-1 text-xs text-slate-400">{zone.description}</p>
+          <p className="mt-1 text-xs text-ui-subtle">{zone.description}</p>
         </div>
         <button type="button" onClick={() => islandNavigation.backToOverview()} className="nav-chip" aria-label="Back to the island">
           ✕

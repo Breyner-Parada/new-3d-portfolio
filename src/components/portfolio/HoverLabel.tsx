@@ -20,8 +20,8 @@ export function HoverLabel({ scene, hovered }: { scene: Object3D; hovered: strin
 
   return (
     <Html position={info.position} center zIndexRange={[15, 0]} style={{ pointerEvents: "none" }}>
-      <div className="whitespace-nowrap rounded-full border border-cyan-300/60 bg-slate-950/85 px-3 py-1 text-xs font-medium text-cyan-100 shadow-lg backdrop-blur">
-        {info.text} <span className="text-amber-300">· click</span>
+      <div className="whitespace-nowrap rounded-full border border-ui-glow bg-ui-bg px-3 py-1 text-xs font-medium text-ui-glow shadow-lg backdrop-blur">
+        {info.text} <span className="text-ui-accent">· click</span>
       </div>
     </Html>
   );

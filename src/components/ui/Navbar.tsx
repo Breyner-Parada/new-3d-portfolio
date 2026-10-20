@@ -2,6 +2,7 @@
 
 import { ZONES } from "@/features/projects/projectData";
 import { islandNavigation, useIslandNavigation } from "@/features/navigation/useIslandNavigation";
+import { ThemeToggle } from "./ThemeToggle";
 
 /** Zone menu: lets visitors navigate without touching the 3D scene (desktop top bar, mobile bottom bar). */
 export function Navbar() {
@@ -31,6 +32,7 @@ export function Navbar() {
           {z.label}
         </button>
       ))}
+      <ThemeToggle />
     </nav>
   );
 }

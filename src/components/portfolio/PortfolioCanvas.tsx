@@ -3,11 +3,15 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { AdaptiveDpr } from "@react-three/drei";
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
+import { useTheme } from "@/features/theme/useTheme";
 import { IslandEnvironment } from "./IslandEnvironment";
 import { IslandScene } from "./IslandScene";
 import { CameraController } from "./CameraController";
 
 export default function PortfolioCanvas() {
+  const theme = useTheme();
+
   return (
     <Canvas
       dpr={[1, 1.75]}
@@ -19,6 +23,12 @@ export default function PortfolioCanvas() {
         <IslandScene />
         <CameraController />
       </Suspense>
+      {/* Neon glow: bloom only exists in dark mode, so the light theme pays nothing for it. */}
+      {theme === "dark" && (
+        <EffectComposer multisampling={4}>
+          <Bloom mipmapBlur intensity={1.1} luminanceThreshold={0.75} luminanceSmoothing={0.25} radius={0.7} />
+        </EffectComposer>
+      )}
       <AdaptiveDpr pixelated={false} />
     </Canvas>
   );

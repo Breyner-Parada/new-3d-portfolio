@@ -1,13 +1,54 @@
 @import "tailwindcss";
 
+/* Theme tokens: light by default, dark under [data-theme="dark"] (set before paint by the <head> script). */
 :root {
-  --background: #0b1220;
+  --background: #dfe8f3;
+  --foreground: #0f172a;
+  --ui-bg: rgb(255 255 255 / 0.88);
+  --ui-solid: #eef3f9;
+  --ui-field: rgb(255 255 255 / 0.95);
+  --ui-fg: #0f172a;
+  --ui-muted: #334155;
+  --ui-subtle: #64748b;
+  --ui-border: rgb(15 23 42 / 0.14);
+  --ui-tag: rgb(15 23 42 / 0.06);
+  --ui-accent: #b45309;
+  --ui-glow: #0e7490;
+  --ui-badge: #0f766e;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --background: #050a18;
   --foreground: #e6edf7;
+  --ui-bg: rgb(2 6 23 / 0.85);
+  --ui-solid: #020617;
+  --ui-field: rgb(15 23 42 / 0.8);
+  --ui-fg: #f1f5f9;
+  --ui-muted: #cbd5e1;
+  --ui-subtle: #94a3b8;
+  --ui-border: rgb(255 255 255 / 0.12);
+  --ui-tag: rgb(255 255 255 / 0.05);
+  --ui-accent: #fcd34d;
+  --ui-glow: #67e8f9;
+  --ui-badge: #5eead4;
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ui-bg: var(--ui-bg);
+  --color-ui-solid: var(--ui-solid);
+  --color-ui-field: var(--ui-field);
+  --color-ui-fg: var(--ui-fg);
+  --color-ui-muted: var(--ui-muted);
+  --color-ui-subtle: var(--ui-subtle);
+  --color-ui-border: var(--ui-border);
+  --color-ui-tag: var(--ui-tag);
+  --color-ui-accent: var(--ui-accent);
+  --color-ui-glow: var(--ui-glow);
+  --color-ui-badge: var(--ui-badge);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -20,11 +61,16 @@ body {
 
 @layer components {
   .nav-chip {
-    @apply shrink-0 rounded-full border border-white/15 bg-slate-950/70 px-4 py-2 text-sm text-slate-100 backdrop-blur transition-colors;
-    @apply hover:border-amber-400/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400;
+    @apply shrink-0 rounded-full border border-ui-border bg-ui-bg px-4 py-2 text-sm text-ui-fg backdrop-blur transition-colors;
+    @apply hover:border-ui-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-accent;
   }
   .nav-chip[aria-pressed="true"],
   .nav-chip[aria-current="true"] {
-    @apply border-amber-400 text-amber-300;
+    @apply border-ui-accent text-ui-accent;
+  }
+  /* Neon accents in dark mode. */
+  :root[data-theme="dark"] .nav-chip[aria-pressed="true"],
+  :root[data-theme="dark"] .nav-chip[aria-current="true"] {
+    box-shadow: 0 0 12px rgb(252 211 77 / 0.35);
   }
 }

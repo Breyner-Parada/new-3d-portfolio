@@ -7,18 +7,20 @@ import { useGLTF } from "@react-three/drei";
 import { useIslandNavigation } from "@/features/navigation/useIslandNavigation";
 import { findInteractive, interactiveHandlers } from "./InteractiveObject";
 import { HoverLabel } from "./HoverLabel";
+import { themeBlend } from "./themeBlend";
 
 export const ISLAND_MODEL = "/models/island.glb";
 export const DRACO_PATH = "/draco/";
 
 type Animated = { object: Object3D; kind: string; baseY: number; speed: number; phase: number };
-type Pulsing = { material: Material & { emissiveIntensity: number }; base: number };
+type Glowing = { material: MeshStandardMaterial; base: number; pulse: boolean };
 /** An interactive object with its own material copies, so its glow doesn't leak to shared palette materials. */
 type Hoverable = { root: Object3D; baseScale: number; mix: number; mats: { mat: MeshStandardMaterial; base: Color }[] };
 
 const HOVER_TINT = new Color("#49d3f5");
 const HOVER_GLOW = 0.35; // how far the emissive colour moves towards the tint
 const HOVER_GROW = 0.04; // +4 % scale
+const NEON_BOOST = 1.6; // emissive multiplier added at full night (x2.6)
 
 /**
  * Renders island.glb, drives the idle animations authored as `anim` extras in Blender
@@ -29,14 +31,14 @@ export function IslandScene() {
   const { hovered } = useIslandNavigation();
 
   // Scene-graph objects are mutated every frame, so they live in a ref rather than render state.
-  const targets = useRef<{ animated: Animated[]; pulsing: Pulsing[]; hoverables: Hoverable[] }>({
+  const targets = useRef<{ animated: Animated[]; glowing: Glowing[]; hoverables: Hoverable[] }>({
     animated: [],
-    pulsing: [],
+    glowing: [],
     hoverables: [],
   });
 
   useEffect(() => {
-    // Interactive roots get their own material clones first (before the pulse list grabs materials).
+    // Interactive roots get their own material clones first (before the glow list grabs materials).
     const hoverables: Hoverable[] = [];
     const roots = new Set<Object3D>();
     scene.traverse((o) => {
@@ -58,7 +60,6 @@ export function IslandScene() {
     }
 
     const animated: Animated[] = [];
-    const pulsing = new Map<Material, Pulsing>();
     scene.traverse((o) => {
       const anim = o.userData?.anim as string | undefined;
       if (!anim) return;
@@ -69,23 +70,30 @@ export function IslandScene() {
         speed: Number(o.userData.spin_speed ?? 0.3),
         phase: Number(o.userData.float_phase ?? animated.length * 1.7),
       });
-      if (anim === "pulse") {
-        o.traverse((child) => {
-          const mats = (child as Mesh).material;
-          for (const m of Array.isArray(mats) ? mats : mats ? [mats] : []) {
-            const em = m as Pulsing["material"];
-            if (em.emissiveIntensity !== undefined && !pulsing.has(m)) pulsing.set(m, { material: em, base: em.emissiveIntensity });
-          }
-        });
+    });
+
+    // Every self-lit material (screens, crystals, lava, neon strips…): these are what turn
+    // into neon at night. Pulse objects additionally breathe.
+    const glowing = new Map<Material, Glowing>();
+    const pulseRoots = new Set(animated.filter((a) => a.kind === "pulse").map((a) => a.object));
+    scene.traverse((o) => {
+      const mesh = o as Mesh;
+      if (!mesh.isMesh) return;
+      let pulse = false;
+      for (let p: Object3D | null = o; p; p = p.parent) if (pulseRoots.has(p)) pulse = true;
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        const em = m as MeshStandardMaterial;
+        if (!em.emissive || em.emissive.getHex() === 0 || glowing.has(m)) continue;
+        glowing.set(m, { material: em, base: em.emissiveIntensity, pulse });
       }
     });
-    targets.current = { animated, pulsing: [...pulsing.values()], hoverables };
+    targets.current = { animated, glowing: [...glowing.values()], hoverables };
   }, [scene]);
 
   /* eslint-disable react-hooks/immutability -- per-frame mutation of the three.js scene graph is how R3F animates; these objects are not React state */
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
-    const { animated, pulsing, hoverables } = targets.current;
+    const { animated, glowing, hoverables } = targets.current;
 
     // Hover highlight: ease a 0..1 mix towards the target, then apply glow + scale.
     for (const h of hoverables) {
@@ -123,8 +131,10 @@ export function IslandScene() {
           break;
       }
     }
+    // Neon: emissives get brighter as the night blend rises (bloom picks up everything above ~1).
     const k = 0.8 + 0.2 * Math.sin(t * 2.2);
-    for (const p of pulsing) p.material.emissiveIntensity = p.base * k;
+    const neon = 1 + NEON_BOOST * themeBlend.night;
+    for (const g of glowing) g.material.emissiveIntensity = g.base * neon * (g.pulse ? k : 1);
   });
   /* eslint-enable react-hooks/immutability */
 

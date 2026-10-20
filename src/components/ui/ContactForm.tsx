@@ -27,7 +27,7 @@ export function ContactForm() {
     }
   }
 
-  const field = "w-full rounded-lg border border-white/15 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:outline-2 focus-visible:outline-amber-400";
+  const field = "w-full rounded-lg border border-ui-border bg-ui-field px-3 py-2 text-sm text-ui-fg placeholder:text-ui-subtle focus-visible:outline-2 focus-visible:outline-ui-accent";
 
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-2">
@@ -41,7 +41,7 @@ export function ContactForm() {
       <button type="submit" disabled={status === "sending"} className="nav-chip w-full disabled:opacity-60">
         {status === "sending" ? "Sending…" : "Send message"}
       </button>
-      <p role="status" className="min-h-5 text-xs text-slate-400">
+      <p role="status" className="min-h-5 text-xs text-ui-subtle">
         {status === "sent" && "Message sent! I'll get back to you soon."}
         {status === "error" && `Couldn't send it. Email me at ${PROFILE.email}.`}
       </p>
