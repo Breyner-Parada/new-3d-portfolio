@@ -71,7 +71,14 @@ function BaseCamp({ selection }: { selection: Selection }) {
 function ProjectDetail({ project }: { project: Project }) {
   return (
     <article>
-      <h3 className="text-lg font-semibold">{project.name}</h3>
+      <h3 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+        {project.name}
+        {project.status && (
+          <span className="rounded-full border border-teal-400/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-teal-300">
+            {project.status}
+          </span>
+        )}
+      </h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-300">{project.summary}</p>
       <div className="mt-3"><Tags items={project.stack} /></div>
       <div className="mt-4 flex flex-wrap gap-2">

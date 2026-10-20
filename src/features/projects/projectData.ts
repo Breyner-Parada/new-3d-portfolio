@@ -97,14 +97,23 @@ export const PROJECTS: Project[] = [
     featured: true,
   },
   {
+    slug: "stratobounce",
+    name: "Strato Bounce",
+    summary:
+      "Endless vertical climber for Android, built solo in Unity. Bounce automatically across normal, moving, fragile, spring and vanishing platforms while the world shifts from forest to sky to space — your score is the highest altitude you reach. A monthly skill-contest leaderboard, funded by the game's ad revenue, rewards the top 3, with every score validated server-side.",
+    stack: ["Unity 6", "C#", "Firebase", "Cloud Functions", "Unity IAP", "Unity Ads", "Google Play Games"],
+    featured: true,
+    status: "In development",
+  },
+  {
     slug: "metalcal",
     name: "MetalCal",
     summary:
-      "Web tool for quick metallurgical process calculations — deformation, diffusion, energy, mass balance, phase diagrams, and solidification. Bridges engineering domain knowledge with modern web UI.",
+      "Web tool for quick metallurgical process calculations — deformation, diffusion, energy, mass balance, phase diagrams, and solidification.",
     stack: ["Next.js", "React", "Tailwind CSS", "GSAP"],
     live: "https://metal-calc-green.vercel.app/",
     source: "https://github.com/Breyner-Parada/metalCalc",
-    featured: true,
+    featured: false,
   },
   {
     slug: "toctoc",
@@ -152,7 +161,7 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
     skills: ["HTML5", "CSS3", "JavaScript", "TypeScript", "React", "Next.js", "Redux Toolkit", "Tailwind CSS", "Material UI", "Sass"],
   },
   { id: "backend", name: "Backend", skills: ["Node.js", "Express", "REST API", "WebSockets", "MongoDB", "PostgreSQL", "Docker", "Git"] },
-  { id: "mobile", name: "Mobile", skills: ["React Native", "Expo", "Firebase", "AdMob"] },
+  { id: "mobile", name: "Mobile & Games", skills: ["React Native", "Expo", "Firebase", "AdMob", "Unity", "C#"] },
   { id: "3d", name: "3D & Motion", skills: ["Three.js", "React Three Fiber", "GSAP", "Blender"] },
   { id: "ai-automation", name: "AI & Automation", skills: ["AI features in apps (NeuroNote)"] },
 ];
@@ -174,7 +183,12 @@ export const ENGINEERING_TOPICS: EngineeringTopic[] = [
     role: "architecture",
     title: "Architecture & APIs",
     description: "Services that connect apps to their data.",
-    items: ["Custom REST API (FlashBack)", "WebSockets and microservices (Un Toque Digital)", "Serverless backend with Firebase (Huellitas, NeuroNote)"],
+    items: [
+      "Custom REST API (FlashBack)",
+      "WebSockets and microservices (Un Toque Digital)",
+      "Serverless backend with Firebase (Huellitas, NeuroNote)",
+      "Server-side score validation and monthly leaderboard close with Cloud Functions (Strato Bounce)",
+    ],
   },
   {
     role: "deploy",

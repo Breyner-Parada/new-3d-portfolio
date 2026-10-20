@@ -43,6 +43,8 @@ export interface Project {
   source?: string;
   /** Has its own station in Project Outpost. */
   featured: boolean;
+  /** Short badge for unreleased work, e.g. "In development". */
+  status?: string;
 }
 
 export interface Profile {
