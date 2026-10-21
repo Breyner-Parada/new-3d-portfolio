@@ -10,6 +10,7 @@ import { IslandScene } from "./IslandScene";
 import { CameraController } from "./CameraController";
 import { CelestialBodies } from "./CelestialBodies";
 import { Stars } from "./Stars";
+import { Companions } from "./Companions";
 
 export default function PortfolioCanvas() {
   const theme = useTheme();
@@ -26,6 +27,10 @@ export default function PortfolioCanvas() {
       <Suspense fallback={null}>
         <IslandScene />
         <CameraController />
+      </Suspense>
+      {/* Loaded after the island so the people and animals never hold up the first view. */}
+      <Suspense fallback={null}>
+        <Companions />
       </Suspense>
       {/* Neon glow: bloom only exists in dark mode, so the light theme pays nothing for it. */}
       {theme === "dark" && (
