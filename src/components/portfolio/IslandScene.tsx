@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Color, Euler, MathUtils, type Material, type Mesh, type MeshStandardMaterial, type Object3D } from "three";
+import {
+  Color,
+  Euler,
+  MathUtils,
+  type Material,
+  type Mesh,
+  type MeshStandardMaterial,
+  type Object3D,
+  type ShaderMaterial,
+} from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { useIslandNavigation } from "@/features/navigation/useIslandNavigation";
@@ -10,6 +19,7 @@ import { HoverLabel } from "./HoverLabel";
 import { themeBlend } from "./themeBlend";
 import { createWaterfallMaterial, WATERFALL_PREFIX } from "./waterfallMaterial";
 import { createLavaMaterial, LAVA_NAME } from "./lavaMaterial";
+import { createSwirlMaterial, SWIRL_NAME } from "./swirlMaterial";
 
 /** The new floating island, rebuilt asset by asset in island-assets/new-island.blend. */
 export const ISLAND_MODEL = "/models/island-new.glb";
@@ -43,6 +53,7 @@ export function IslandScene() {
   const { hovered } = useIslandNavigation();
   const water = useMemo(() => createWaterfallMaterial(), []);
   const lava = useMemo(() => createLavaMaterial(), []);
+  const swirl = useMemo(() => createSwirlMaterial(), []);
   // Shared clock for every "wave" (cloth) material patched below.
   const waveTime = useMemo(() => ({ value: 0 }), []);
 
@@ -58,12 +69,14 @@ export function IslandScene() {
       if (!(o as Mesh).isMesh) return;
       if (o.name.startsWith(WATERFALL_PREFIX)) (o as Mesh).material = water;
       if (o.name === LAVA_NAME) (o as Mesh).material = lava;
+      if (o.name === SWIRL_NAME) (o as Mesh).material = swirl;
     });
     return () => {
       water.dispose();
       lava.dispose();
+      swirl.dispose();
     };
-  }, [scene, water, lava]);
+  }, [scene, water, lava, swirl]);
 
   useEffect(() => {
     // Cloth ("wave"): ripple the vertices along local Z. The flag's UVs run u = 0 at the pole to
@@ -101,6 +114,9 @@ export function IslandScene() {
         const mesh = child as Mesh;
         if (!mesh.isMesh) return;
         const clone = (m: Material) => {
+          // shader materials (waterfall, lava, portal swirl) are driven by shared uniforms every
+          // frame; a copy would freeze, and they have no emissive to tint anyway
+          if ((m as ShaderMaterial).isShaderMaterial) return m;
           const c = m.clone() as MeshStandardMaterial;
           if (c.emissive) mats.push({ mat: c, base: c.emissive.clone() });
           return c;
@@ -176,6 +192,8 @@ export function IslandScene() {
     water.uniforms.uNight.value = themeBlend.night;
     lava.uniforms.uTime.value = t;
     lava.uniforms.uNight.value = themeBlend.night;
+    swirl.uniforms.uTime.value = t;
+    swirl.uniforms.uNight.value = themeBlend.night;
     waveTime.value = t;
     // Fire: two out-of-phase sines read as an irregular flicker.
     const flick = 0.5 * Math.sin(t * 13.0) + 0.3 * Math.sin(t * 7.3 + 1.3) + 0.2 * Math.sin(t * 21.7);
