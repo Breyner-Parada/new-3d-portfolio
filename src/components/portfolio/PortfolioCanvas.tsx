@@ -8,6 +8,7 @@ import { useTheme } from "@/features/theme/useTheme";
 import { IslandEnvironment } from "./IslandEnvironment";
 import { IslandScene } from "./IslandScene";
 import { CameraController } from "./CameraController";
+import { CelestialBodies } from "./CelestialBodies";
 
 export default function PortfolioCanvas() {
   const theme = useTheme();
@@ -19,6 +20,7 @@ export default function PortfolioCanvas() {
       gl={{ antialias: true, powerPreference: "high-performance" }}
     >
       <IslandEnvironment />
+      <CelestialBodies />
       <Suspense fallback={null}>
         <IslandScene />
         <CameraController />
