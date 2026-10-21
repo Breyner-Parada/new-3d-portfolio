@@ -9,6 +9,7 @@ import { IslandEnvironment } from "./IslandEnvironment";
 import { IslandScene } from "./IslandScene";
 import { CameraController } from "./CameraController";
 import { CelestialBodies } from "./CelestialBodies";
+import { Stars } from "./Stars";
 
 export default function PortfolioCanvas() {
   const theme = useTheme();
@@ -20,6 +21,7 @@ export default function PortfolioCanvas() {
       gl={{ antialias: true, powerPreference: "high-performance" }}
     >
       <IslandEnvironment />
+      <Stars />
       <CelestialBodies />
       <Suspense fallback={null}>
         <IslandScene />
