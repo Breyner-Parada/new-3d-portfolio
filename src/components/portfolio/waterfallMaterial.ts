@@ -5,7 +5,8 @@ export const WATERFALL_PREFIX = "SM_Waterfall_";
 
 /**
  * Animated water for the SM_Waterfall_* meshes. Their UVs are authored in Blender as
- * u = across the fall, v = height, so scrolling v makes the streaks run downhill.
+ * u = across the fall, v = height; the glTF export flips V (v -> 1 - v), so here v grows
+ * downwards and the streaks must scroll towards larger v to run downhill.
  */
 const waterVertex = /* glsl */ `
   #include <fog_pars_vertex>
@@ -36,8 +37,8 @@ const waterFragment = /* glsl */ `
 
   void main() {
     // Two layers of vertical streaks falling at different speeds.
-    vec2 p = vec2(vUv.x * 4.0, vUv.y * 2.5 + uTime * 2.2);
-    float s = noise(p) * 0.6 + noise(p * vec2(2.3, 1.7) + vec2(0.0, uTime * 1.3)) * 0.4;
+    vec2 p = vec2(vUv.x * 4.0, vUv.y * 2.5 - uTime * 2.2);
+    float s = noise(p) * 0.6 + noise(p * vec2(2.3, 1.7) - vec2(0.0, uTime * 1.3)) * 0.4;
     float streak = smoothstep(0.5, 0.75, s);
     // Soft edges across the fall.
     float edge = smoothstep(0.0, 0.18, vUv.x) * smoothstep(1.0, 0.82, vUv.x);
