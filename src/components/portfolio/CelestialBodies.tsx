@@ -19,7 +19,8 @@ import gsap from "gsap";
 import { useTheme, type Theme } from "@/features/theme/useTheme";
 
 /**
- * Sun (light theme) and moon (dark theme) hanging in the top-left of the sky. On a theme change the
+ * Sun (light theme) and moon (dark theme) hanging in the top-right of the sky, over the open side of
+ * the island (the left is busy with the waterfall, forest and portal). On a theme change the
  * current one sets along a curved arc behind the island while the other rises, slightly overlapped.
  *
  * They're placed from the camera every frame (a screen-anchored point pushed far behind the island),
@@ -29,22 +30,24 @@ import { useTheme, type Theme } from "@/features/theme/useTheme";
 
 const DISTANCE = 180; // behind the island, inside the camera's far plane
 const SIZE = 0.075; // body diameter as a fraction of the screen height
-// Paths in normalised device coordinates, all ending top-left (risen). The setting body drops low
-// towards the centre and slips behind the island; the rising one comes up from the left horizon,
+// Paths in normalised device coordinates, all ending top-right (risen). The setting body drops low
+// towards the centre and slips behind the island; the rising one comes up from the right horizon,
 // arching upwards. Separate paths so the two never cross while they overlap in time.
 type Path = { x: number; y: number; bowX: number; bowY: number };
-const UP = { x: -0.62, y: 0.6 };
-const SETTING: Path = { x: -0.3, y: -1.0, bowX: -0.12, bowY: 0 };
-const RISING: Path = { x: -1.2, y: -0.25, bowX: 0.05, bowY: 0.16 };
+const UP = { x: 0.8, y: 0.7 }; // clear sky above the Outpost tower
+// Portrait screens: the island fills the width, so sit higher, in the strip of sky above it.
+const UP_PORTRAIT = { x: 0.6, y: 0.86 };
+const SETTING: Path = { x: 0.3, y: -1.0, bowX: 0.12, bowY: 0 };
+const RISING: Path = { x: 1.2, y: -0.25, bowX: -0.05, bowY: 0.16 };
 
 const SET = { duration: 1.5, ease: "sine.in" };
 const RISE = { duration: 1.9, ease: "power3.out", overlap: 0.75 };
 
 /** Point on `path` for progress p (0 = below the horizon, 1 = risen), bowed mid-way like a real sun path. */
-function arc(path: Path, p: number, out: { x: number; y: number }) {
+function arc(path: Path, p: number, up: { x: number; y: number }, out: { x: number; y: number }) {
   const bow = Math.sin(Math.PI * p);
-  out.x = MathUtils.lerp(path.x, UP.x, p) + path.bowX * bow;
-  out.y = MathUtils.lerp(path.y, UP.y, p) + path.bowY * bow;
+  out.x = MathUtils.lerp(path.x, up.x, p) + path.bowX * bow;
+  out.y = MathUtils.lerp(path.y, up.y, p) + path.bowY * bow;
   return out;
 }
 
@@ -93,7 +96,7 @@ function moonGeometry() {
     [0.65, -0.2, 0.72, 0.2],
     [-0.7, -0.45, 0.55, 0.22],
   ].map(([x, y, z, r]) => ({ dir: new Vector3(x, y, z).normalize(), r }));
-  const light = new Vector3(-0.55, 0.45, 0.7).normalize();
+  const light = new Vector3(0.55, 0.45, 0.7).normalize(); // lit from the right, like the island
   const base = new Color("#eef2fb");
   const floor = new Color("#aeb9cf");
   const colors = new Float32Array(p.count * 3);
@@ -174,11 +177,12 @@ export function CelestialBodies() {
     const halfHeight = DISTANCE * Math.tan(MathUtils.degToRad((camera as { fov?: number }).fov ?? 40) / 2);
     const radius = halfHeight * SIZE;
 
+    const up = (camera as { aspect?: number }).aspect! < 1 ? UP_PORTRAIT : UP;
     const place = (group: Group | null, path: Path, p: number, wobble: number) => {
       if (!group) return;
       group.visible = p > 0.001;
       if (!group.visible) return;
-      arc(path, p, ndc);
+      arc(path, p, up, ndc);
       tmp.set(ndc.x, ndc.y, 0.5).unproject(camera).sub(camera.position).normalize();
       group.position.copy(camera.position).addScaledVector(tmp, DISTANCE);
       group.lookAt(camera.position);

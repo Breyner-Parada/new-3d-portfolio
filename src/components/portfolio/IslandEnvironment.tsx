@@ -75,8 +75,8 @@ export function IslandEnvironment() {
       <primitive attach="background" object={sky} />
       <primitive attach="fog" object={fog} />
       <hemisphereLight ref={hemi} args={["#bcd4ff", "#2f3b33", 1.1]} />
-      {/* Direction matches the Blender sun (52°, 0, -35°) converted to Y-up. */}
-      <directionalLight ref={sun} position={[-18, 25, 26]} intensity={2.4} color="#ffdcb8" />
+      {/* From the upper right, the side where the sun / moon hang in the sky (CelestialBodies). */}
+      <directionalLight ref={sun} position={[30, 26, 18]} intensity={2.4} color="#ffdcb8" />
       {NEON_LIGHTS.map((l, i) => (
         <pointLight
           key={i}
