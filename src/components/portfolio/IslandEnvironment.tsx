@@ -33,7 +33,7 @@ const NEON_LIGHTS: { position: [number, number, number]; color: string; intensit
   { position: [4.7, 5, 3.5], color: "#ff8a3d", intensity: 25, distance: 10 }, // Base Camp campfire
   { position: [17, 7.5, -11], color: "#5a8dff", intensity: 35, distance: 16 }, // Project Outpost
   { position: [-1.1, 13.5, -20.4], color: "#2ec4b6", intensity: 40, distance: 14 }, // Skill Crystals
-  { position: [15.4, 2.5, 11], color: "#ff5a1f", intensity: 30, distance: 12 }, // Systems Lab lava
+  { position: [16.2, 0.8, 11.6], color: "#ff5a1f", intensity: 30, distance: 12 }, // Systems Lab lava pool
   { position: [-0.6, -0.5, 20.9], color: "#ffa03d", intensity: 40, distance: 14 }, // Contact Portal
 ];
 

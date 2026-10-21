@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Color, MathUtils, type Material, type Mesh, type MeshStandardMaterial, type Object3D } from "three";
+import { Color, Euler, MathUtils, type Material, type Mesh, type MeshStandardMaterial, type Object3D } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { useIslandNavigation } from "@/features/navigation/useIslandNavigation";
@@ -9,13 +9,23 @@ import { findInteractive, interactiveHandlers } from "./InteractiveObject";
 import { HoverLabel } from "./HoverLabel";
 import { themeBlend } from "./themeBlend";
 import { createWaterfallMaterial, WATERFALL_PREFIX } from "./waterfallMaterial";
+import { createLavaMaterial, LAVA_NAME } from "./lavaMaterial";
 
 /** The new floating island, rebuilt asset by asset in island-assets/new-island.blend. */
 export const ISLAND_MODEL = "/models/island-new.glb";
 export const DRACO_PATH = "/draco/";
 
-type Animated = { object: Object3D; kind: string; baseY: number; baseScale: number; speed: number; phase: number };
-type Glowing = { material: MeshStandardMaterial; base: number; mode: "steady" | "pulse" | "flicker" };
+type Animated = {
+  object: Object3D;
+  kind: string;
+  baseY: number;
+  baseScale: number;
+  speed: number;
+  phase: number;
+  /** Robot arm joints (Turret, Upper, Fore, Claw) with their rest rotation. */
+  joints?: { node: Object3D; rest: Euler }[];
+};
+type Glowing = { material: MeshStandardMaterial; base: number; mode: "steady" | "pulse" | "flicker" | "blink"; phase: number };
 /** An interactive object with its own material copies, so its glow doesn't leak to shared palette materials. */
 type Hoverable = { root: Object3D; baseScale: number; mix: number; mats: { mat: MeshStandardMaterial; base: Color }[] };
 
@@ -26,12 +36,13 @@ const NEON_BOOST = 0.8; // emissive multiplier added at full night (x1.8)
 
 /**
  * Renders island.glb, drives the idle animations authored as `anim` extras in Blender
- * (spin, float, orbit, hover, bob, pulse, flicker, wave) and highlights interactive objects on hover.
+ * (spin, float, orbit, hover, bob, pulse, flicker, wave, blink, robot) and highlights interactive objects on hover.
  */
 export function IslandScene() {
   const { scene } = useGLTF(ISLAND_MODEL, DRACO_PATH);
   const { hovered } = useIslandNavigation();
   const water = useMemo(() => createWaterfallMaterial(), []);
+  const lava = useMemo(() => createLavaMaterial(), []);
   // Shared clock for every "wave" (cloth) material patched below.
   const waveTime = useMemo(() => ({ value: 0 }), []);
 
@@ -44,10 +55,15 @@ export function IslandScene() {
 
   useEffect(() => {
     scene.traverse((o) => {
-      if (o.name.startsWith(WATERFALL_PREFIX) && (o as Mesh).isMesh) (o as Mesh).material = water;
+      if (!(o as Mesh).isMesh) return;
+      if (o.name.startsWith(WATERFALL_PREFIX)) (o as Mesh).material = water;
+      if (o.name === LAVA_NAME) (o as Mesh).material = lava;
     });
-    return () => water.dispose();
-  }, [scene, water]);
+    return () => {
+      water.dispose();
+      lava.dispose();
+    };
+  }, [scene, water, lava]);
 
   useEffect(() => {
     // Cloth ("wave"): ripple the vertices along local Z. The flag's UVs run u = 0 at the pole to
@@ -104,14 +120,23 @@ export function IslandScene() {
         baseY: o.position.y,
         baseScale: o.scale.y,
         speed: Number(o.userData.spin_speed ?? 0.3),
-        phase: Number(o.userData.float_phase ?? animated.length * 1.7),
+        phase: Number(o.userData.float_phase ?? o.userData.blink_phase ?? animated.length * 1.7),
+        joints:
+          anim === "robot"
+            ? ["Turret", "Upper", "Fore", "Claw"].flatMap((j) => {
+                const node = o.getObjectByName(`${o.name}_${j}`);
+                return node ? [{ node, rest: node.rotation.clone() }] : [];
+              })
+            : undefined,
       });
     });
 
     // Flames share the palette's lava/amber materials with lanterns etc.; give them their own
-    // copies so only the fire flickers.
+    // copies so only the fire flickers. Blinking objects need their own too (the three racks share
+    // one mesh); interactive ones already got copies from the hover setup above.
     const flickerRoots = new Set(animated.filter((a) => a.kind === "flicker").map((a) => a.object));
-    for (const root of flickerRoots) {
+    const blinkRoots = new Map(animated.filter((a) => a.kind === "blink").map((a) => [a.object, a.phase]));
+    for (const root of [...flickerRoots, ...[...blinkRoots.keys()].filter((r) => !roots.has(r))]) {
       root.traverse((child) => {
         const mesh = child as Mesh;
         if (!mesh.isMesh) return;
@@ -120,21 +145,24 @@ export function IslandScene() {
     }
 
     // Every self-lit material (screens, crystals, lava, neon strips…): these are what turn
-    // into neon at night. Pulse objects additionally breathe, flicker objects (fire) jitter.
+    // into neon at night. Pulse objects additionally breathe, flicker objects (fire) jitter,
+    // blink objects (status LEDs, beacons) switch on and off irregularly.
     const glowing = new Map<Material, Glowing>();
     const pulseRoots = new Set(animated.filter((a) => a.kind === "pulse").map((a) => a.object));
     scene.traverse((o) => {
       const mesh = o as Mesh;
       if (!mesh.isMesh) return;
       let mode: Glowing["mode"] = "steady";
+      let phase = 0;
       for (let p: Object3D | null = o; p; p = p.parent) {
         if (pulseRoots.has(p)) mode = "pulse";
         if (flickerRoots.has(p)) mode = "flicker";
+        if (blinkRoots.has(p)) [mode, phase] = ["blink", blinkRoots.get(p)!];
       }
       for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
         const em = m as MeshStandardMaterial;
         if (!em.emissive || em.emissive.getHex() === 0 || glowing.has(m)) continue;
-        glowing.set(m, { material: em, base: em.emissiveIntensity, mode });
+        glowing.set(m, { material: em, base: em.emissiveIntensity, mode, phase });
       }
     });
     targets.current = { animated, glowing: [...glowing.values()], hoverables };
@@ -146,6 +174,8 @@ export function IslandScene() {
     const { animated, glowing, hoverables } = targets.current;
     water.uniforms.uTime.value = t;
     water.uniforms.uNight.value = themeBlend.night;
+    lava.uniforms.uTime.value = t;
+    lava.uniforms.uNight.value = themeBlend.night;
     waveTime.value = t;
     // Fire: two out-of-phase sines read as an irregular flicker.
     const flick = 0.5 * Math.sin(t * 13.0) + 0.3 * Math.sin(t * 7.3 + 1.3) + 0.2 * Math.sin(t * 21.7);
@@ -191,13 +221,27 @@ export function IslandScene() {
             a.baseScale * (1 + 0.05 * Math.sin(t * 8.3 + 0.7)),
           );
           break;
+        case "robot": {
+          // pick-and-place loop: the turret sweeps while shoulder, elbow and wrist bend in turn
+          const [turret, upper, fore, claw] = a.joints ?? [];
+          const c = t * 0.55;
+          if (turret) turret.node.rotation.y = turret.rest.y + Math.sin(c) * 0.9;
+          if (upper) upper.node.rotation.x = upper.rest.x + Math.sin(c * 2 + 0.6) * 0.22;
+          if (fore) fore.node.rotation.x = fore.rest.x + Math.sin(c * 2 + 1.6) * 0.32;
+          if (claw) claw.node.rotation.y = claw.rest.y + t * 1.4;
+          break;
+        }
       }
     }
     // Neon: emissives get brighter as the night blend rises (bloom picks up everything above ~1).
     const k = 0.8 + 0.2 * Math.sin(t * 2.2);
     const neon = 1 + NEON_BOOST * themeBlend.night;
-    const mul = { steady: 1, pulse: k, flicker: 0.85 + 0.25 * flick };
-    for (const g of glowing) g.material.emissiveIntensity = g.base * neon * mul[g.mode];
+    const mul = { steady: 1, pulse: k, flicker: 0.85 + 0.25 * flick, blink: 1 };
+    for (const g of glowing) {
+      // blink: mostly on, dropping out irregularly (two sines at unrelated rates, per-object phase)
+      const m = g.mode === "blink" ? (Math.sin(t * 3.1 + g.phase) * Math.sin(t * 1.7 + g.phase * 1.3) > -0.35 ? 1 : 0.15) : mul[g.mode];
+      g.material.emissiveIntensity = g.base * neon * m;
+    }
   });
   /* eslint-enable react-hooks/immutability */
 
