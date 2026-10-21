@@ -8,9 +8,11 @@ import { DRACO_PATH } from "./IslandScene";
 import route from "./avatarRoute.json";
 
 /**
- * Life on the island: the developer avatar strolls around Base Camp (scripts/build_paths.py computes the
+ * Life on the island: the developer avatar tours the whole island along its own paths and stairs
+ * (scripts/build_paths.py computes the
  * loop over the walkable terrain and writes avatarRoute.json), stopping to wave from the fountain, sit by
- * the campfire, take in the view, work at the desk and visit the cabin. The dog trots behind, and an
+ * the campfire, visit the portal, the lab racks, a project station and the crystal altar, work at the desk
+ * and stop by the cabin. The dog trots behind, and an
  * eagle circles overhead. Clicking the avatar makes it wave.
  */
 
