@@ -22,7 +22,7 @@ type Hoverable = { root: Object3D; baseScale: number; mix: number; mats: { mat: 
 const HOVER_TINT = new Color("#49d3f5");
 const HOVER_GLOW = 0.35; // how far the emissive colour moves towards the tint
 const HOVER_GROW = 0.04; // +4 % scale
-const NEON_BOOST = 1.6; // emissive multiplier added at full night (x2.6)
+const NEON_BOOST = 0.8; // emissive multiplier added at full night (x1.8)
 
 /**
  * Renders island.glb, drives the idle animations authored as `anim` extras in Blender

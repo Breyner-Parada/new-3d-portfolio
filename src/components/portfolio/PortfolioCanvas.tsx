@@ -30,7 +30,7 @@ export default function PortfolioCanvas() {
       {/* Neon glow: bloom only exists in dark mode, so the light theme pays nothing for it. */}
       {theme === "dark" && (
         <EffectComposer multisampling={4}>
-          <Bloom mipmapBlur intensity={1.1} luminanceThreshold={0.75} luminanceSmoothing={0.25} radius={0.7} />
+          <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.85} luminanceSmoothing={0.25} radius={0.6} />
         </EffectComposer>
       )}
       <AdaptiveDpr pixelated={false} />
