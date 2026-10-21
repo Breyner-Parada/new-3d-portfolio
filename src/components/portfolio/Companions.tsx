@@ -8,10 +8,10 @@ import { DRACO_PATH } from "./IslandScene";
 import route from "./avatarRoute.json";
 
 /**
- * Life on the island: the developer avatar walks a loop through every zone (scripts/build_paths.py
- * computes it over the walkable terrain and writes avatarRoute.json), stopping to sit by the campfire,
- * work at the desk, check a project station… The dog trots behind, and an eagle circles overhead.
- * Clicking the avatar makes it wave.
+ * Life on the island: the developer avatar strolls around Base Camp (scripts/build_paths.py computes the
+ * loop over the walkable terrain and writes avatarRoute.json), stopping to wave from the fountain, sit by
+ * the campfire, take in the view, work at the desk and visit the cabin. The dog trots behind, and an
+ * eagle circles overhead. Clicking the avatar makes it wave.
  */
 
 const AVATAR_MODEL = "/models/avatar.glb";
