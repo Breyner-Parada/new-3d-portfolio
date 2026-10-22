@@ -251,7 +251,9 @@ export function Companions() {
         EAGLE_ORBIT.height + Math.sin(th * 1.7) * 1.5,
         Math.sin(th) * EAGLE_ORBIT.radius,
       );
-      eagle.current.rotation.set(0, Math.atan2(-Math.sin(th), Math.cos(th)), -0.35, "YXZ");
+      // the eagle's beak points down -Z: yaw it onto the orbit tangent (-sin, cos), then bank the
+      // right wing (+X, towards the centre) down into the turn
+      eagle.current.rotation.set(0, Math.PI - th, -0.35, "YXZ");
     }
   });
   /* eslint-enable react-hooks/immutability */
