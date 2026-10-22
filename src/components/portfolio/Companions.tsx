@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { LoopOnce, LoopRepeat, MathUtils, Vector3, type AnimationAction, type Group } from "three";
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { LoopOnce, LoopRepeat, MathUtils, Raycaster, Vector3, type AnimationAction, type Group } from "three";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { DRACO_PATH } from "./IslandScene";
 import route from "./avatarRoute.json";
@@ -11,20 +11,32 @@ import route from "./avatarRoute.json";
  * Life on the island: the developer avatar tours the whole island along its own paths and stairs
  * (scripts/build_paths.py computes the loop over the walkable terrain and writes avatarRoute.json),
  * stopping to wave from the fountain, sit by the campfire, visit the portal, the lab racks, a project
- * station and the crystal altar, work at the desk and stop by the cabin. The dog trots behind, and an
- * eagle circles overhead. Clicking the avatar makes it wave.
+ * station and the crystal altar, work at the desk and stop by the cabin. The Shiba Inu trots behind, a deer,
+ * a stag and a fox graze or rest by the paths, and an eagle circles overhead. Clicking the avatar makes
+ * it wave. The avatar's clips are Quaternius "Universal Animation Library" mocap retargeted onto its rig
+ * (island-assets/scripts/build_avatar_ual.py); the animals are Quaternius "Ultimate Animated Animals"
+ * (build_wildlife.py), exported at real size facing +Z.
  */
 
 const AVATAR_MODEL = "/models/avatar.glb";
-const DOG_MODEL = "/models/dog.glb";
+const DOG_MODEL = "/models/shiba.glb";
 const EAGLE_MODEL = "/models/eagle.glb";
 
-const WALK_SPEED = 1.25; // u/s, matches the walk clip's stride
+const WALK_SPEED = 1.1; // u/s
+const WALK_CLIP_SPEED = 0.975; // u/s the UAL walk covers at timeScale 1 (measured on its root-motion twin)
 const FADE = 0.35;
-// Quaternius models: measured in Blender (scripts/build_companions.py exports them at source size)
-const DOG_SCALE = 0.95 / 6.9; // 0.95 u long
-const DOG_YAW = -Math.PI / 2; // its nose points down +X; turn it to the +Z forward the avatar uses
+const ONCE = new Set(["sit", "wave"]); // stop clips that play once and hold their last pose
 const DOG_SPEED = 1.6;
+
+/**
+ * Animals that stay put: x/z on open, flat grass clear of the paths and buildings (picked by raycasting the
+ * terrain), dropped onto the ground once the island has loaded.
+ */
+const WILDLIFE = [
+  { model: "/models/deer.glb", x: 9.2, z: -5.1, yaw: 2.2, clips: ["eating", "idle", "eating", "idle_headlow"] },
+  { model: "/models/stag.glb", x: 8, z: -8.2, yaw: 0.9, clips: ["idle", "eating", "idle_2", "eating"] },
+  { model: "/models/fox.glb", x: -8, z: 8, yaw: -2.4, clips: ["idle", "idle_2", "idle_2_headlow"] },
+] as const;
 const EAGLE_SCALE = 2.4 / 12.46; // 2.4 u wingspan
 const EAGLE_ORBIT = { radius: 30, height: 21, speed: 0.07 };
 
@@ -75,6 +87,45 @@ function play(actions: Record<string, AnimationAction | null>, current: { name: 
   current.name = name;
 }
 
+/** One grazing / resting animal: cycles through its idle clips and settles onto the terrain under it. */
+function Wildlife({ spot }: { spot: (typeof WILDLIFE)[number] }) {
+  const gltf = useGLTF(spot.model, DRACO_PATH);
+  const group = useRef<Group>(null);
+  const { actions } = useAnimations(gltf.animations, group);
+  const scene = useThree((s) => s.scene);
+  const st = useRef({ clip: { name: "" }, k: 0, timer: 0, grounded: false });
+  const ray = useMemo(() => new Raycaster(new Vector3(spot.x, 30, spot.z), new Vector3(0, -1, 0)), [spot]);
+
+  /* eslint-disable react-hooks/immutability -- per-frame animation of three.js objects and refs, not React state */
+  useFrame(({ camera }, rawDelta) => {
+    const g = group.current;
+    if (!g) return;
+    const a = st.current;
+    if (!a.grounded) {
+      // the island streams in on its own; keep trying until there is ground under the animal
+      ray.camera = camera; // sprites (the stars, glows) need it even though they never count as ground
+      const hit = ray
+        .intersectObjects(scene.children, true)
+        .find((h) => h.object.type !== "SkinnedMesh" && h.face && h.face.normal.y > 0.5); // skip the avatar and animals
+      if (hit) g.position.set(spot.x, hit.point.y, spot.z);
+      a.grounded = !!hit;
+    }
+    a.timer -= Math.min(rawDelta, 0.1);
+    if (a.timer <= 0) {
+      const name = spot.clips[a.k++ % spot.clips.length];
+      play(actions, a.clip, name);
+      a.timer = 4 + Math.random() * 5;
+    }
+  });
+  /* eslint-enable react-hooks/immutability */
+
+  return (
+    <group ref={group} position={[spot.x, -100, spot.z]} rotation={[0, spot.yaw, 0]}>
+      <primitive object={gltf.scene} />
+    </group>
+  );
+}
+
 export function Companions() {
   const avatarGltf = useGLTF(AVATAR_MODEL, DRACO_PATH);
   const dogGltf = useGLTF(DOG_MODEL, DRACO_PATH);
@@ -100,6 +151,8 @@ export function Companions() {
     dogClip: { name: "" },
     wave: false,
     advance: true, // when the current pause ends, head for the following stop (false after a wave mid-walk)
+    clipTime: 0, // seconds into the current stop clip
+    standing: false, // getting up from the campfire before walking on
     theta: 0,
   });
   const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), d: new Vector3(), side: new Vector3() }), []);
@@ -133,17 +186,29 @@ export function Companions() {
         st.mode = "stop";
         st.advance = true;
         st.timer = stop.duration;
-        const once = stop.clip === "sit" || stop.clip === "wave";
-        play(avatarAnims.actions, st.clip, `Avatar_${stop.clip}`, once);
+        st.clipTime = 0;
+        play(avatarAnims.actions, st.clip, `Avatar_${stop.clip}`, ONCE.has(stop.clip));
       } else st.s += step;
     } else {
       st.timer -= dt;
-      if (st.timer <= 0) {
+      st.clipTime += dt;
+      // sitting down plays once, then settles into the seated loop; leaving, the avatar stands up first
+      const sit = avatarAnims.actions.Avatar_sit;
+      if (st.clip.name === "Avatar_sit" && sit && st.clipTime >= sit.getClip().duration - FADE)
+        play(avatarAnims.actions, st.clip, "Avatar_sit_idle");
+      if (st.timer <= 0 && !st.standing && st.clip.name.startsWith("Avatar_sit")) {
+        play(avatarAnims.actions, st.clip, "Avatar_stand", true);
+        st.standing = true;
+        st.timer = (avatarAnims.actions.Avatar_stand?.getClip().duration ?? 1) - FADE;
+      } else if (st.timer <= 0) {
+        st.standing = false;
         if (st.advance) st.next = (st.next + 1) % path.stops.length;
         st.mode = "walk";
         play(avatarAnims.actions, st.clip, "Avatar_walk");
       }
     }
+    const avatarWalk = avatarAnims.actions.Avatar_walk;
+    if (avatarWalk) avatarWalk.timeScale = WALK_SPEED / WALK_CLIP_SPEED;
     path.sample(st.s, p, t);
     if (avatar.current) {
       avatar.current.position.copy(p);
@@ -212,10 +277,11 @@ export function Companions() {
         <primitive object={avatarGltf.scene} />
       </group>
       <group ref={dog}>
-        <group rotation={[0, DOG_YAW, 0]} scale={DOG_SCALE}>
-          <primitive object={dogGltf.scene} />
-        </group>
+        <primitive object={dogGltf.scene} />
       </group>
+      {WILDLIFE.map((spot) => (
+        <Wildlife key={spot.model} spot={spot} />
+      ))}
       <group ref={eagle}>
         <group scale={EAGLE_SCALE}>
           <primitive object={eagleGltf.scene} />
