@@ -12,10 +12,12 @@ import route from "./avatarRoute.json";
  * (scripts/build_paths.py computes the loop over the walkable terrain and writes avatarRoute.json),
  * stopping to wave from the fountain, sit by the campfire, visit the portal, the lab racks, a project
  * station and the crystal altar, work at the desk and stop by the cabin. The Shiba Inu trots behind, a deer,
- * a stag and a fox graze or rest by the paths, and an eagle circles overhead. Clicking the avatar makes
- * it wave. The avatar's clips are Quaternius "Universal Animation Library" mocap retargeted onto its rig
- * (island-assets/scripts/build_avatar_ual.py); the animals are Quaternius "Ultimate Animated Animals"
- * (build_wildlife.py), exported at real size facing +Z.
+ * a stag and a fox graze or rest by the paths, a few residents chat, tend the garden, work at the lab or
+ * stroll a stretch of path, and an eagle circles overhead. Clicking the avatar makes it wave.
+ * Everyone's clips are Quaternius "Universal Animation Library" mocap retargeted onto their rigs
+ * (island-assets/scripts/build_avatar_ual.py, build_people.py); the residents are Microsoft Rocketbox
+ * people and the animals Quaternius "Ultimate Animated Animals" (build_wildlife.py), all exported at real
+ * size facing +Z.
  */
 
 const AVATAR_MODEL = "/models/avatar.glb";
@@ -28,15 +30,35 @@ const FADE = 0.35;
 const ONCE = new Set(["sit", "wave"]); // stop clips that play once and hold their last pose
 const DOG_SPEED = 1.6;
 
+type Spot = { model: string; x: number; z: number; yaw: number; clips: readonly string[] };
+
 /**
- * Animals that stay put: x/z on open, flat grass clear of the paths and buildings (picked by raycasting the
- * terrain), dropped onto the ground once the island has loaded.
+ * Animals and residents that stay put: x/z on open, flat ground clear of the paths and buildings (picked by
+ * raycasting the terrain), dropped onto the ground once the island has loaded.
  */
-const WILDLIFE = [
+const WILDLIFE: readonly Spot[] = [
   { model: "/models/deer.glb", x: 9.2, z: -5.1, yaw: 2.2, clips: ["eating", "idle", "eating", "idle_headlow"] },
   { model: "/models/stag.glb", x: 8, z: -8.2, yaw: 0.9, clips: ["idle", "eating", "idle_2", "eating"] },
   { model: "/models/fox.glb", x: -8, z: 8, yaw: -2.4, clips: ["idle", "idle_2", "idle_2_headlow"] },
-] as const;
+];
+const PEOPLE: readonly Spot[] = [
+  // watching the deer from the Outpost meadow
+  { model: "/models/person-explorer.glb", x: 7.5, z: -4, yaw: 2.15, clips: ["explorer_idle", "explorer_talk"] },
+  // weeding by the trees west of the cabin
+  { model: "/models/person-gardener.glb", x: -6.5, z: -2.5, yaw: -1.77, clips: ["gardener_fix", "gardener_idle"] },
+  // checking the lab's racks
+  { model: "/models/person-builder.glb", x: 15.5, z: 15, yaw: -2.05, clips: ["builder_interact", "builder_idle"] },
+];
+/** Strolls back and forth along a stretch of the avatar's loop, keeping to its side of the path. */
+const STROLLER = {
+  model: "/models/person-stroller.glb",
+  from: 140, // route point indices: the stretch from the portal towards the lab
+  to: 190,
+  side: -0.7, // u off the centre line (both ways), opposite the dog, so it passes the avatar and the dog
+  speed: 0.9,
+  pause: ["stroller_talk", "stroller_idle"],
+  walk: "stroller_walk",
+};
 const EAGLE_SCALE = 2.4 / 12.46; // 2.4 u wingspan
 const EAGLE_ORBIT = { radius: 30, height: 21, speed: 0.07 };
 
@@ -66,7 +88,7 @@ function useRoute() {
       if (tangent) tangent.subVectors(b, a).setY(0).normalize();
       return out;
     };
-    return { length, stops, sample };
+    return { length, stops, sample, cum };
   }, []);
 }
 
@@ -87,8 +109,8 @@ function play(actions: Record<string, AnimationAction | null>, current: { name: 
   current.name = name;
 }
 
-/** One grazing / resting animal: cycles through its idle clips and settles onto the terrain under it. */
-function Wildlife({ spot }: { spot: (typeof WILDLIFE)[number] }) {
+/** One animal or resident staying put: cycles through its idle clips and settles onto the terrain under it. */
+function Idler({ spot }: { spot: Spot }) {
   const gltf = useGLTF(spot.model, DRACO_PATH);
   const group = useRef<Group>(null);
   const { actions } = useAnimations(gltf.animations, group);
@@ -102,7 +124,7 @@ function Wildlife({ spot }: { spot: (typeof WILDLIFE)[number] }) {
     if (!g) return;
     const a = st.current;
     if (!a.grounded) {
-      // the island streams in on its own; keep trying until there is ground under the animal
+      // the island streams in on its own; keep trying until there is ground underneath
       ray.camera = camera; // sprites (the stars, glows) need it even though they never count as ground
       const hit = ray
         .intersectObjects(scene.children, true)
@@ -121,6 +143,52 @@ function Wildlife({ spot }: { spot: (typeof WILDLIFE)[number] }) {
 
   return (
     <group ref={group} position={[spot.x, -100, spot.z]} rotation={[0, spot.yaw, 0]}>
+      <primitive object={gltf.scene} />
+    </group>
+  );
+}
+
+/** The strolling resident: walks the STROLLER stretch end to end, pausing at each end. */
+function Stroller({ path }: { path: ReturnType<typeof useRoute> }) {
+  const gltf = useGLTF(STROLLER.model, DRACO_PATH);
+  const group = useRef<Group>(null);
+  const { actions } = useAnimations(gltf.animations, group);
+  const ends = [path.cum[STROLLER.from], path.cum[STROLLER.to]];
+  const st = useRef({ s: ends[0], dir: 1, timer: 0, yaw: 0, clip: { name: "" }, k: 0 });
+  const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), side: new Vector3() }), []);
+
+  /* eslint-disable react-hooks/immutability -- per-frame animation of three.js objects and refs, not React state */
+  useFrame((_, rawDelta) => {
+    const dt = Math.min(rawDelta, 0.1);
+    const a = st.current;
+    const { p, t, side } = tmp;
+    if (a.timer > 0) a.timer -= dt;
+    else {
+      play(actions, a.clip, STROLLER.walk); // no-op once walking; also starts it on the first frame
+      const end = ends[a.dir > 0 ? 1 : 0];
+      a.s += a.dir * STROLLER.speed * dt;
+      if ((end - a.s) * a.dir <= 0) {
+        a.s = end;
+        a.dir = -a.dir;
+        a.timer = 4 + Math.random() * 3;
+        play(actions, a.clip, STROLLER.pause[a.k++ % STROLLER.pause.length]);
+      }
+    }
+    const walk = actions[STROLLER.walk];
+    if (walk) walk.timeScale = STROLLER.speed / WALK_CLIP_SPEED;
+    path.sample(a.s, p, t);
+    p.addScaledVector(side.set(t.z, 0, -t.x), STROLLER.side);
+    const g = group.current;
+    if (g) {
+      g.position.copy(p);
+      a.yaw = dampAngle(a.yaw, Math.atan2(t.x * a.dir, t.z * a.dir), 5, dt);
+      g.rotation.y = a.yaw;
+    }
+  });
+  /* eslint-enable react-hooks/immutability */
+
+  return (
+    <group ref={group}>
       <primitive object={gltf.scene} />
     </group>
   );
@@ -281,9 +349,10 @@ export function Companions() {
       <group ref={dog}>
         <primitive object={dogGltf.scene} />
       </group>
-      {WILDLIFE.map((spot) => (
-        <Wildlife key={spot.model} spot={spot} />
+      {[...WILDLIFE, ...PEOPLE].map((spot) => (
+        <Idler key={spot.model} spot={spot} />
       ))}
+      <Stroller path={path} />
       <group ref={eagle}>
         <group scale={EAGLE_SCALE}>
           <primitive object={eagleGltf.scene} />
