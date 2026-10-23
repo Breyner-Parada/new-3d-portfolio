@@ -11,6 +11,7 @@ import { CameraController } from "./CameraController";
 import { CelestialBodies } from "./CelestialBodies";
 import { Stars } from "./Stars";
 import { Clouds } from "./Clouds";
+import { PathLamps } from "./PathLamps";
 import { Companions } from "./Companions";
 
 export default function PortfolioCanvas() {
@@ -28,6 +29,7 @@ export default function PortfolioCanvas() {
       <Clouds />
       <Suspense fallback={null}>
         <IslandScene />
+        <PathLamps />
         <CameraController />
       </Suspense>
       {/* Loaded after the island so the people and animals never hold up the first view. */}
