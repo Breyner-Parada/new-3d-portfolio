@@ -43,6 +43,9 @@ const HOVER_TINT = new Color("#49d3f5");
 const HOVER_GLOW = 0.35; // how far the emissive colour moves towards the tint
 const HOVER_GROW = 0.04; // +4 % scale
 const NEON_BOOST = 0.8; // emissive multiplier added at full night (x1.8)
+const CAMP_FLAG = "SM_BaseCamp_Flag";
+const CAMP_FLAG_HEIGHT = 1.15; // u, from its top edge (y = 0) down
+const COLOMBIA = ["#fcd116", "#003893", "#ce1126"]; // yellow, blue, red
 
 /**
  * Renders island.glb, drives the idle animations authored as `anim` extras in Blender
@@ -85,16 +88,32 @@ export function IslandScene() {
       const mesh = o as Mesh;
       if (o.userData?.anim !== "wave" || !mesh.isMesh) return;
       const cloth = (mesh.material as MeshStandardMaterial).clone();
+      const colombia = o.name === CAMP_FLAG;
+      if (colombia) cloth.color.set("#ffffff");
       cloth.onBeforeCompile = (shader) => {
         shader.uniforms.uWaveTime = waveTime;
         shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nuniform float uWaveTime;")
+          .replace("#include <common>", "#include <common>\nuniform float uWaveTime;\nvarying float vFlagY;")
           .replace(
             "#include <begin_vertex>",
             `#include <begin_vertex>
+            vFlagY = position.y;
             float waveAmp = uv.x;
             transformed.z += sin(uv.x * 6.0 - uWaveTime * 4.0 + uv.y * 1.5) * 0.14 * waveAmp;
             transformed.y += sin(uv.x * 4.0 - uWaveTime * 3.0) * 0.04 * waveAmp;`,
+          );
+        if (!colombia) return;
+        // Colombia's flag, painted by height on the unrippled cloth (top edge at y = 0): yellow over the
+        // top half, then blue and red a quarter each.
+        const [yellow, blue, red] = COLOMBIA.map((c) => new Color(c));
+        const vec = (c: Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying float vFlagY;")
+          .replace(
+            "#include <color_fragment>",
+            `#include <color_fragment>
+            float stripe = -vFlagY / ${CAMP_FLAG_HEIGHT.toFixed(2)};
+            diffuseColor.rgb *= stripe < 0.5 ? ${vec(yellow)} : stripe < 0.75 ? ${vec(blue)} : ${vec(red)};`,
           );
       };
       mesh.material = cloth;
