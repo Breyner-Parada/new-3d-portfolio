@@ -56,9 +56,13 @@ const STROLLER = {
   to: 190,
   side: -0.7, // u off the centre line (both ways), opposite the dog, so it passes the avatar and the dog
   speed: 0.9,
+  clipSpeed: 0.7, // u/s its retargeted walk covers at timeScale 1 (measured on the planted foot)
   pause: ["stroller_talk", "stroller_idle"],
   walk: "stroller_walk",
 };
+const PROFILE_STEP = 0.1; // u between the stroller's precomputed side offsets and ground heights
+const STAIR_SLOPE = 0.3; // rise per u above which the route is a staircase
+const STAIR_MARGIN = 1.2; // u over which the stroller eases off the centre line after the stairs
 const EAGLE_SCALE = 2.4 / 12.46; // 2.4 u wingspan
 const EAGLE_ORBIT = { radius: 30, height: 21, speed: 0.07 };
 
@@ -153,15 +157,57 @@ function Stroller({ path }: { path: ReturnType<typeof useRoute> }) {
   const gltf = useGLTF(STROLLER.model, DRACO_PATH);
   const group = useRef<Group>(null);
   const { actions } = useAnimations(gltf.animations, group);
-  const ends = [path.cum[STROLLER.from], path.cum[STROLLER.to]];
-  const st = useRef({ s: ends[0], dir: 1, timer: 0, yaw: 0, clip: { name: "" }, k: 0 });
+  const scene = useThree((s) => s.scene);
+  const ends = useMemo(() => [path.cum[STROLLER.from], path.cum[STROLLER.to]], [path]);
+  const st = useRef({ s: ends[0], dir: 1, timer: 0, yaw: 0, y: NaN, clip: { name: "" }, k: 0 });
   const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), side: new Vector3() }), []);
+  const ray = useMemo(() => new Raycaster(), []);
+
+  // Side offset every PROFILE_STEP u of the stretch: none on the stairs, which are too narrow to walk beside
+  // the avatar's line (the offset would put the stroller in the stair walls), easing back over STAIR_MARGIN.
+  const sides = useMemo(() => {
+    const n = Math.ceil((ends[1] - ends[0]) / PROFILE_STEP) + 1;
+    const a = new Vector3();
+    const b = new Vector3();
+    const steep = Array.from({ length: n }, (_, k) => {
+      const s = ends[0] + k * PROFILE_STEP;
+      return Math.abs(path.sample(s + 0.4, a).y - path.sample(s - 0.4, b).y) / 0.8 > STAIR_SLOPE;
+    });
+    return steep.map((_, k) => {
+      let d = Infinity;
+      for (let j = 0; j < n; j++) if (steep[j]) d = Math.min(d, Math.abs(j - k) * PROFILE_STEP);
+      return STROLLER.side * MathUtils.smoothstep(d, 0, STAIR_MARGIN);
+    });
+  }, [path, ends]);
+  // Ground height at those spots, raycast once the island has loaded: the route only ramps up the stairs.
+  const ground = useRef<number[] | null>(null);
 
   /* eslint-disable react-hooks/immutability -- per-frame animation of three.js objects and refs, not React state */
-  useFrame((_, rawDelta) => {
+  useFrame(({ camera }, rawDelta) => {
     const dt = Math.min(rawDelta, 0.1);
     const a = st.current;
     const { p, t, side } = tmp;
+    if (!ground.current) {
+      ray.camera = camera; // sprites (the stars, glows) need it even though they never count as ground
+      // the upward-facing surface nearest the route's height (not the lab canopy above it), or the route's own
+      // height where there is none close by
+      const groundAt = (k: number) => {
+        path.sample(ends[0] + k * PROFILE_STEP, p, t);
+        p.addScaledVector(side.set(t.z, 0, -t.x), sides[k]);
+        ray.set(side.set(p.x, 30, p.z), t.set(0, -1, 0));
+        let best = Infinity;
+        for (const h of ray.intersectObjects(scene.children, true))
+          if (h.object.type !== "SkinnedMesh" && h.face && h.face.normal.y > 0 && Math.abs(h.point.y - p.y) < Math.abs(best - p.y))
+            best = h.point.y;
+        return Math.abs(best - p.y) < 0.6 ? best : NaN;
+      };
+      // the island streams in on its own: wait until there is ground under the start of the stretch
+      if (!Number.isNaN(groundAt(0)))
+        ground.current = sides.map((_, k) => {
+          const y = groundAt(k);
+          return Number.isNaN(y) ? p.y : y;
+        });
+    }
     if (a.timer > 0) a.timer -= dt;
     else {
       play(actions, a.clip, STROLLER.walk); // no-op once walking; also starts it on the first frame
@@ -175,9 +221,17 @@ function Stroller({ path }: { path: ReturnType<typeof useRoute> }) {
       }
     }
     const walk = actions[STROLLER.walk];
-    if (walk) walk.timeScale = STROLLER.speed / WALK_CLIP_SPEED;
+    if (walk) walk.timeScale = STROLLER.speed / STROLLER.clipSpeed;
+    const f = MathUtils.clamp((a.s - ends[0]) / PROFILE_STEP, 0, sides.length - 1);
+    const k = Math.min(Math.floor(f), sides.length - 2);
     path.sample(a.s, p, t);
-    p.addScaledVector(side.set(t.z, 0, -t.x), STROLLER.side);
+    p.addScaledVector(side.set(t.z, 0, -t.x), MathUtils.lerp(sides[k], sides[k + 1], f - k));
+    if (ground.current) {
+      // step up and down the stairs a little softened rather than popping onto each tread
+      const y = MathUtils.lerp(ground.current[k], ground.current[k + 1], f - k);
+      a.y = Number.isNaN(a.y) ? y : MathUtils.damp(a.y, y, 14, dt);
+      p.y = a.y;
+    }
     const g = group.current;
     if (g) {
       g.position.copy(p);
