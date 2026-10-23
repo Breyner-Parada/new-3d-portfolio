@@ -10,6 +10,7 @@ import { IslandScene } from "./IslandScene";
 import { CameraController } from "./CameraController";
 import { CelestialBodies } from "./CelestialBodies";
 import { Stars } from "./Stars";
+import { Clouds } from "./Clouds";
 import { Companions } from "./Companions";
 
 export default function PortfolioCanvas() {
@@ -24,6 +25,7 @@ export default function PortfolioCanvas() {
       <IslandEnvironment />
       <Stars />
       <CelestialBodies />
+      <Clouds />
       <Suspense fallback={null}>
         <IslandScene />
         <CameraController />
