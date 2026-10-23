@@ -25,14 +25,16 @@ const NIGHT = {
 
 /**
  * Coloured accent lights that only switch on at night, so the neon emissives also
- * light their surroundings. Positions are the Blender accent lights converted to Y-up.
+ * light their surroundings. Positions are the zone anchors of new-island.blend converted
+ * to Y-up (scripts/export_nav.py prints them).
  */
 const NEON_LIGHTS: { position: [number, number, number]; color: string; intensity: number; distance: number }[] = [
-  { position: [0, 6, 1], color: "#49d3f5", intensity: 40, distance: 16 }, // Base Camp landmark
-  { position: [12, 7, 1], color: "#5a8dff", intensity: 35, distance: 16 }, // Project Outpost
-  { position: [-1, 16, -13.5], color: "#2ec4b6", intensity: 40, distance: 14 }, // Skill Crystals
-  { position: [4.9, 3.6, 12.5], color: "#ff5a1f", intensity: 30, distance: 12 }, // Systems Lab lava
-  { position: [1.5, 4.3, 27], color: "#ffa03d", intensity: 40, distance: 14 }, // Contact Portal
+  { position: [0, 7, 1], color: "#49d3f5", intensity: 40, distance: 16 }, // Base Camp landmark
+  { position: [4.7, 5, 3.5], color: "#ff8a3d", intensity: 25, distance: 10 }, // Base Camp campfire
+  { position: [17, 7.5, -11], color: "#5a8dff", intensity: 35, distance: 16 }, // Project Outpost
+  { position: [-1.1, 13.5, -20.4], color: "#2ec4b6", intensity: 40, distance: 14 }, // Skill Crystals
+  { position: [16.2, 0.8, 11.6], color: "#ff5a1f", intensity: 30, distance: 12 }, // Systems Lab lava pool
+  { position: [-1.05, -0.2, 21.2], color: "#ffa03d", intensity: 40, distance: 14 }, // Contact Portal ring
 ];
 
 const ease = 3; // damping speed of the day/night transition
@@ -73,8 +75,8 @@ export function IslandEnvironment() {
       <primitive attach="background" object={sky} />
       <primitive attach="fog" object={fog} />
       <hemisphereLight ref={hemi} args={["#bcd4ff", "#2f3b33", 1.1]} />
-      {/* Direction matches the Blender sun (52°, 0, -35°) converted to Y-up. */}
-      <directionalLight ref={sun} position={[-18, 25, 26]} intensity={2.4} color="#ffdcb8" />
+      {/* From the upper right, the side where the sun / moon hang in the sky (CelestialBodies). */}
+      <directionalLight ref={sun} position={[30, 26, 18]} intensity={2.4} color="#ffdcb8" />
       {NEON_LIGHTS.map((l, i) => (
         <pointLight
           key={i}

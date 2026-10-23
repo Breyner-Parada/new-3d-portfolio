@@ -226,7 +226,7 @@ export function ProjectPanel() {
   return (
     <aside
       aria-labelledby="panel-title"
-      className="pointer-events-auto fixed inset-x-4 bottom-20 z-20 max-h-[55vh] overflow-y-auto rounded-2xl border border-ui-border bg-ui-bg p-5 text-ui-fg shadow-xl backdrop-blur md:inset-x-auto md:bottom-6 md:right-6 md:top-20 md:max-h-none md:w-[26rem]"
+      className="pointer-events-auto fixed inset-x-4 bottom-4 top-[4.5rem] z-20 overflow-y-auto rounded-2xl border border-ui-border bg-ui-bg p-5 text-ui-fg shadow-xl backdrop-blur md:inset-x-auto md:bottom-6 md:right-6 md:top-20 md:max-h-none md:w-[26rem]"
     >
       <div className="mb-3 flex items-start justify-between gap-4">
         <div>
